@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPS Control Panel Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --dark: #1e293b;
+            --darker: #0f172a;
+            --light: #f8fafc;
+            --border: #334155;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--darker) 0%, #1a1f3a 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .nav-tab:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            border-color: var(--primary);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-detail {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            transition: width 0.5s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .panel {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .terminal {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            background: linear-gradient(135deg, #2d3748, #1a202c);
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid #000;
+        }
+
+        .terminal-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .terminal-btn.close { background: #ff5f56; }
+        .terminal-btn.minimize { background: #ffbd2e; }
+        .terminal-btn.maximize { background: #27c93f; }
+
+        .terminal-title {
+            margin-left: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .terminal-body {
+            padding: 1rem;
+            height: 500px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .terminal-output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #00ff00;
+        }
+
+        .terminal-input-line {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .terminal-prompt {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .terminal-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .file-manager {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1.5rem;
+            min-height: 600px;
+        }
+
+        .file-sidebar {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .file-content {
+            background: rgba(30, 41, 59, 0.4);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .file-path {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-item {
+            padding: 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid transparent;
+        }
+
+        .file-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: var(--primary);
+        }
+
+        .file-item.selected {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+            border-color: var(--primary);
+        }
+
+        .file-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .file-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-meta {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        textarea.input-field {
+            font-family: 'Courier New', monospace;
+            min-height: 400px;
+            resize: vertical;
+        }
+
+        .process-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .process-table th,
+        .process-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .process-table th {
+            background: rgba(102, 126, 234, 0.1);
+            font-weight: 600;
+            color: var(--primary);
+            position: sticky;
+            top: 0;
+        }
+
+        .process-table tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideDown 0.3s;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .close-modal {
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+
+        @media (max-width: 768px) {
+            .navbar-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-tabs {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .file-manager {
+                grid-template-columns: 1fr;
+            }
+
+            .file-sidebar {
+                display: none;
+            }
+
+            .container {
+                padding: 0 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <div class="logo-icon">🚀</div>
+                <span>VPS Control Panel Pro</span>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
+                <button class="nav-tab" data-tab="terminal">💻 Terminal</button>
+                <button class="nav-tab" data-tab="files">📁 Files</button>
+                <button class="nav-tab" data-tab="processes">⚙️ Processes</button>
+            </div>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Connected</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="dashboard">
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">CPU Usage</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">🖥️</div>
+                    </div>
+                    <div class="stat-value" id="cpu-value">0%</div>
+                    <div class="stat-detail" id="cpu-detail">0 cores</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="cpu-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Memory Usage</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">💾</div>
+                    </div>
+                    <div class="stat-value" id="memory-value">0%</div>
+                    <div class="stat-detail" id="memory-detail">0 GB / 0 GB</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="memory-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">Disk Usage</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">💿</div>
+                    </div>
+                    <div class="stat-value" id="disk-value">0%</div>
+                    <div class="stat-detail" id="disk-detail">0 GB / 0 GB</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="disk-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <span class="stat-title">System Uptime</span>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">⏱️</div>
+                    </div>
+                    <div class="stat-value" id="uptime-value">0d</div>
+                    <div class="stat-detail" id="uptime-detail">0h 0m</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📡 System Information</h2>
+                    <button class="btn btn-secondary" onclick="refreshStats()">
+                        <span>🔄 Refresh</span>
+                    </button>
+                </div>
+                <div class="dashboard-grid">
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Operating System</div>
+                        <div style="color: var(--text); font-weight: 500;" id="os-info">Loading...</div>
+                    </div>
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Hostname</div>
+                        <div style="color: var(--text); font-weight: 500;" id="hostname">Loading...</div>
+                    </div>
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Network Sent</div>
+                        <div style="color: var(--text); font-weight: 500;" id="net-sent">0 B</div>
+                    </div>
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Network Received</div>
+                        <div style="color: var(--text); font-weight: 500;" id="net-recv">0 B</div>
+                    </div>
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Load Average</div>
+                        <div style="color: var(--text); font-weight: 500;" id="load-avg">0.00</div>
+                    </div>
+                    <div>
+                        <div class="stat-detail" style="margin-bottom: 0.5rem;">Running Processes</div>
+                        <div style="color: var(--text); font-weight: 500;" id="process-count">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Tab -->
+        <div class="tab-content" id="terminal">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">💻 Interactive Terminal</h2>
+                    <button class="btn btn-danger" onclick="clearTerminal()">
+                        <span>🗑️ Clear</span>
+                    </button>
+                </div>
+                <div class="terminal">
+                    <div class="terminal-header">
+                        <button class="terminal-btn close"></button>
+                        <button class="terminal-btn minimize"></button>
+                        <button class="terminal-btn maximize"></button>
+                        <span class="terminal-title">bash</span>
+                    </div>
+                    <div class="terminal-body" id="terminal-output">
+                        <div style="color: #00ff00;">Welcome to VPS Control Panel Pro Terminal</div>
+                        <div style="color: #888;">Type your commands below...</div>
+                        <div style="color: #888;">──────────────────────────────────────</div>
+                    </div>
+                    <div class="terminal-input-line" style="padding: 0 1rem 1rem;">
+                        <span class="terminal-prompt">$</span>
+                        <input type="text" class="terminal-input" id="terminal-input" placeholder="Enter command..." autocomplete="off">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Tab -->
+        <div class="tab-content" id="files">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📁 File Manager</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" onclick="showCreateModal('folder')">
+                            <span>📂 New Folder</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="showCreateModal('file')">
+                            <span>📄 New File</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="showUploadModal()">
+                            <span>⬆️ Upload</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="file-path">
+                    <span>📍</span>
+                    <input type="text" class="input-field" id="current-path" value="~" style="flex: 1; margin: 0; padding: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="navigatePath()">Go</button>
+                </div>
+
+                <div class="file-manager">
+                    <div class="file-sidebar">
+                        <div class="file-actions">
+                            <button class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="refreshFiles()">
+                                <span>🔄 Refresh</span>
+                            </button>
+                        </div>
+                        <div id="file-shortcuts">
+                            <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase;">Quick Access</div>
+                            <div class="file-item" onclick="navigateToPath('~')">
+                                <span class="file-icon">🏠</span>
+                                <span>Home</span>
+                            </div>
+                            <div class="file-item" onclick="navigateToPath('/tmp')">
+                                <span class="file-icon">📦</span>
+                                <span>Temp</span>
+                            </div>
+                            <div class="file-item" onclick="navigateToPath('/var/log')">
+                                <span class="file-icon">📋</span>
+                                <span>Logs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="file-content">
+                        <div id="file-list-container">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📂</div>
+                                <p>Select a directory to view files</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processes Tab -->
+        <div class="tab-content" id="processes">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">⚙️ Process Manager</h2>
+                    <button class="btn btn-secondary" onclick="refreshProcesses()">
+                        <span>🔄 Refresh</span>
+                    </button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="process-table">
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Name</th>
+                                <th>CPU %</th>
+                                <th>Memory %</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="process-list">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 2rem;">
+                                    <div class="loading"></div>
+                                    <div style="margin-top: 1rem;">Loading processes...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal" id="create-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="create-modal-title">Create New Item</h3>
+                <button class="close-modal" onclick="closeModal('create-modal')">×</button>
+            </div>
+            <div id="create-modal-alert"></div>
+            <div class="input-group">
+                <label class="input-label">Name</label>
+                <input type="text" class="input-field" id="create-name" placeholder="Enter name...">
+            </div>
+            <div class="input-group" id="create-content-group" style="display: none;">
+                <label class="input-label">Content</label>
+                <textarea class="input-field" id="create-content" placeholder="Enter content..." style="min-height: 200px;"></textarea>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal('create-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="createItem()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit File</h3>
+                <button class="close-modal" onclick="closeModal('edit-modal')">×</button>
+            </div>
+            <div id="edit-modal-alert"></div>
+            <div class="input-group">
+                <label class="input-label">File Path</label>
+                <input type="text" class="input-field" id="edit-path" readonly>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Content</label>
+                <textarea class="input-field" id="edit-content"></textarea>
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal('edit-modal')">Cancel</button>
+                <button class="btn btn-success" onclick="saveFile()">💾 Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="modal" id="upload-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Upload File</h3>
+                <button class="close-modal" onclick="closeModal('upload-modal')">×</button>
+            </div>
+            <div id="upload-modal-alert"></div>
+            <div class="input-group">
+                <label class="input-label">Select File</label>
+                <input type="file" class="input-field" id="upload-file">
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal('upload-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="uploadFile()">⬆️ Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO connection
+        const socket = io();
+
+        // Global state
+        let currentPath = '~';
+        let currentFiles = [];
+        let selectedFile = null;
+        let createType = 'file';
+
+        // Tab switching
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                
+                // Update active tab
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // Update content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(targetTab).classList.add('active');
+                
+                // Load data for specific tabs
+                if (targetTab === 'dashboard') {
+                    refreshStats();
+                } else if (targetTab === 'files') {
+                    refreshFiles();
+                } else if (targetTab === 'processes') {
+                    refreshProcesses();
+                }
+            });
+        });
+
+        // Socket events
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            refreshStats();
+        });
+
+        socket.on('terminal_output', (data) => {
+            const output = document.getElementById('terminal-output');
+            const line = document.createElement('div');
+            
+            if (data.stream === 'command') {
+                line.style.color = '#00ff00';
+                line.style.fontWeight = 'bold';
+            } else if (data.stream === 'stderr') {
+                line.style.color = '#ff5555';
+            } else {
+                line.style.color = '#ffffff';
+            }
+            
+            line.textContent = data.text;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        });
+
+        // Terminal
+        const terminalInput = document.getElementById('terminal-input');
+        terminalInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const cmd = terminalInput.value.trim();
+                if (cmd) {
+                    socket.emit('terminal_command', { cmd });
+                    terminalInput.value = '';
+                }
+            }
+        });
+
+        function clearTerminal() {
+            const output = document.getElementById('terminal-output');
+            output.innerHTML = `
+                <div style="color: #00ff00;">Terminal cleared</div>
+                <div style="color: #888;">──────────────────────────────────────</div>
+            `;
+        }
+
+        // System stats
+        async function refreshStats() {
+            try {
+                const response = await fetch('/api/sysinfo');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    
+                    // Update CPU
+                    document.getElementById('cpu-value').textContent = stats.cpu_percent.toFixed(1) + '%';
+                    document.getElementById('cpu-detail').textContent = `${stats.cpu_count} cores`;
+                    document.getElementById('cpu-progress').style.width = stats.cpu_percent + '%';
+                    
+                    // Update Memory
+                    document.getElementById('memory-value').textContent = stats.memory_percent.toFixed(1) + '%';
+                    document.getElementById('memory-detail').textContent = `${stats.memory_used} / ${stats.memory_total}`;
+                    document.getElementById('memory-progress').style.width = stats.memory_percent + '%';
+                    
+                    // Update Disk
+                    document.getElementById('disk-value').textContent = stats.disk_percent.toFixed(1) + '%';
+                    document.getElementById('disk-detail').textContent = `${stats.disk_used} / ${stats.disk_total}`;
+                    document.getElementById('disk-progress').style.width = stats.disk_percent + '%';
+                    
+                    // Update Uptime
+                    document.getElementById('uptime-value').textContent = `${stats.uptime_days}d`;
+                    document.getElementById('uptime-detail').textContent = `${stats.uptime_hours}h ${stats.uptime_minutes}m`;
+                    
+                    // Update system info
+                    document.getElementById('os-info').textContent = stats.os;
+                    document.getElementById('hostname').textContent = stats.hostname;
+                    document.getElementById('net-sent').textContent = stats.network_sent;
+                    document.getElementById('net-recv').textContent = stats.network_recv;
+                    document.getElementById('load-avg').textContent = stats.load_avg.map(l => l.toFixed(2)).join(', ');
+                    document.getElementById('process-count').textContent = stats.process_count;
+                }
+            } catch (error) {
+                console.error('Error refreshing stats:', error);
+            }
+        }
+
+        // Auto refresh stats
+        setInterval(refreshStats, 5000);
+
+        // File manager
+        async function refreshFiles() {
+            const path = document.getElementById('current-path').value || '~';
+            currentPath = path;
+            
+            try {
+                const response = await fetch('/api/files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentFiles = data.files;
+                    currentPath = data.current_path;
+                    document.getElementById('current-path').value = currentPath;
+                    renderFileList();
+                } else {
+                    showAlert('file-list-container', data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('file-list-container', 'Error loading files', 'error');
+            }
+        }
+
+        function renderFileList() {
+            const container = document.getElementById('file-list-container');
+            
+            if (currentFiles.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📂</div>
+                        <p>No files in this directory</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<ul class="file-list">';
+            
+            currentFiles.forEach(file => {
+                const icon = file.is_dir ? '📁' : '📄';
+                html += `
+                    <li class="file-item" onclick="selectFile('${file.path}', ${file.is_dir})">
+                        <span class="file-icon">${icon}</span>
+                        <div class="file-details">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-meta">${file.size} • ${file.modified}</div>
+                        </div>
+                    </li>
+                `;
+            });
+            
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function selectFile(path, isDir) {
+            if (isDir) {
+                navigateToPath(path);
+            } else {
+                selectedFile = path;
+                showEditModal(path);
+            }
+        }
+
+        function navigateToPath(path) {
+            document.getElementById('current-path').value = path;
+            refreshFiles();
+        }
+
+        function navigatePath() {
+            refreshFiles();
+        }
+
+        // Modals
+        function showCreateModal(type) {
+            createType = type;
+            document.getElementById('create-modal-title').textContent = `Create New ${type === 'folder' ? 'Folder' : 'File'}`;
+            document.getElementById('create-name').value = '';
+            document.getElementById('create-content').value = '';
+            document.getElementById('create-content-group').style.display = type === 'file' ? 'block' : 'none';
+            document.getElementById('create-modal').classList.add('active');
+        }
+
+        async function createItem() {
+            const name = document.getElementById('create-name').value.trim();
+            const content = document.getElementById('create-content').value;
+            
+            if (!name) {
+                showAlert('create-modal-alert', 'Please enter a name', 'error');
+                return;
+            }
+            
+            const path = `${currentPath}/${name}`;
+            
+            try {
+                const response = await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, type: createType, content })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('create-modal-alert', data.message, 'success');
+                    setTimeout(() => {
+                        closeModal('create-modal');
+                        refreshFiles();
+                    }, 1000);
+                } else {
+                    showAlert('create-modal-alert', data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('create-modal-alert', 'Error creating item', 'error');
+            }
+        }
+
+        async function showEditModal(path) {
+            document.getElementById('edit-path').value = path;
+            document.getElementById('edit-content').value = '';
+            document.getElementById('edit-modal').classList.add('active');
+            
+            try {
+                const response = await fetch('/api/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('edit-content').value = data.content;
+                } else {
+                    showAlert('edit-modal-alert', data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('edit-modal-alert', 'Error loading file', 'error');
+            }
+        }
+
+        async function saveFile() {
+            const path = document.getElementById('edit-path').value;
+            const content = document.getElementById('edit-content').value;
+            
+            try {
+                const response = await fetch('/api/write', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path, content })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('edit-modal-alert', data.message, 'success');
+                    setTimeout(() => {
+                        closeModal('edit-modal');
+                        refreshFiles();
+                    }, 1000);
+                } else {
+                    showAlert('edit-modal-alert', data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('edit-modal-alert', 'Error saving file', 'error');
+            }
+        }
+
+        function showUploadModal() {
+            document.getElementById('upload-file').value = '';
+            document.getElementById('upload-modal').classList.add('active');
+        }
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('upload-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showAlert('upload-modal-alert', 'Please select a file', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('path', currentPath);
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('upload-modal-alert', data.message, 'success');
+                    setTimeout(() => {
+                        closeModal('upload-modal');
+                        refreshFiles();
+                    }, 1000);
+                } else {
+                    showAlert('upload-modal-alert', data.error, 'error');
+                }
+            } catch (error) {
+                showAlert('upload-modal-alert', 'Error uploading file', 'error');
+            }
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Processes
+        async function refreshProcesses() {
+            try {
+                const response = await fetch('/api/processes');
+                const data = await response.json();
+                
+                if (data.success) {
+                    renderProcessList(data.processes);
+                }
+            } catch (error) {
+                console.error('Error refreshing processes:', error);
+            }
+        }
+
+        function renderProcessList(processes) {
+            const tbody = document.getElementById('process-list');
+            
+            if (processes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 2rem;">No processes found</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            processes.forEach(proc => {
+                const statusClass = proc.status === 'running' ? 'success' : proc.status === 'sleeping' ? 'warning' : 'danger';
+                html += `
+                    <tr>
+                        <td>${proc.pid}</td>
+                        <td>${proc.name || 'N/A'}</td>
+                        <td>${(proc.cpu_percent || 0).toFixed(1)}%</td>
+                        <td>${(proc.memory_percent || 0).toFixed(1)}%</td>
+                        <td><span class="badge badge-${statusClass}">${proc.status || 'unknown'}</span></td>
+                        <td>
+                            <button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" onclick="killProcess(${proc.pid})">
+                                Kill
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        async function killProcess(pid) {
+            if (!confirm(`Are you sure you want to kill process ${pid}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/kill_process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pid })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    refreshProcesses();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error killing process');
+            }
+        }
+
+        // Utility functions
+        function showAlert(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? '✓' : '✗';
+            
+            const alertHtml = `
+                <div class="alert ${alertClass}">
+                    <span>${icon}</span>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            container.innerHTML = alertHtml;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshStats();
+            refreshFiles();
+        });
+    </script>
+</body>
+</html>
