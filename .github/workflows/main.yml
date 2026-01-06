@@ -1,0 +1,29 @@
+name: Python Test
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. سحب الكود من المستودع
+    - uses: actions/checkout@v3
+
+    # 2. إعداد بيئة بايثون
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    # 3. تثبيت المكتبات المطلوبة
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install aiohttp
+
+    # 4. تشغيل السكربت لاختبار التشغيل (بقيم اختبارية بسيطة)
+    # ملاحظة: يتم استخدام زمن قصير وعدد قليل للتجربة فقط
+    - name: Run Script Test
+      run: |
+        python3 main.py https://c2.dstatbot.win/Zug8FqwB 3000 180
