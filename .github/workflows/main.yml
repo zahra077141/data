@@ -5,6 +5,11 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # هذه الإضافة تجعل الجوب يعمل 10 مرات بشكل متوازي
+    strategy:
+      matrix:
+        n: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
     steps:
     # 1. سحب الكود من المستودع
@@ -22,8 +27,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install aiohttp
 
-    # 4. تشغيل السكربت لاختبار التشغيل (بقيم اختبارية بسيطة)
-    # ملاحظة: يتم استخدام زمن قصير وعدد قليل للتجربة فقط
-    - name: Run Script Test
+    # 4. تشغيل السكربت
+    # تم إضافة طباعة لرقم السيرفر الحالي للتوضيح في السجلات
+    - name: Run Script Test (Server ${{ matrix.n }})
       run: |
-        python3 main.py https://c2.dstatbot.win/Zug8FqwB 3000 180
+        echo "Starting Server Number ${{ matrix.n }}"
+        python3 main.py https://c2.dstatbot.win/AGCFNkPd 3000 300
+
