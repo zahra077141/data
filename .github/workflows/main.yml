@@ -32,5 +32,5 @@ jobs:
     - name: Run Script Test (Server ${{ matrix.n }})
       run: |
         echo "Starting Server Number ${{ matrix.n }}"
-        python3 main.py https://dstat.countbot.uk/ 3000 120
+        python3 main.py wrinkle-aims.gl.at.ply.gg:10457 3000 120
 
